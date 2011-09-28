@@ -22,6 +22,6 @@ Gem::Specification.new do |s|
 
   # Do not update the files and test_files values by hand.
   # This will be done automatically by the gem release script.
-  s.files      = %w(.gitignore Gemfile Gemfile.lock MIT-LICENSE README.rdoc Rakefile http_status_exceptions.gemspec lib/http_status_exceptions.rb spec/http_status_exception_spec.rb spec/spec_helper.rb tasks/github-gem.rake)
+  s.files      = %w(.gitignore .travis.yml Appraisals Gemfile MIT-LICENSE README.rdoc Rakefile gemfiles/actionpack_2.gemfile gemfiles/actionpack_2.gemfile.lock gemfiles/actionpack_3.gemfile gemfiles/actionpack_3.gemfile.lock gemfiles/actionpack_3_1.gemfile gemfiles/actionpack_3_1.gemfile.lock http_status_exceptions.gemspec lib/http_status_exceptions.rb spec/http_status_exception_spec.rb spec/spec_helper.rb tasks/github-gem.rake)
   s.test_files = %w(spec/http_status_exception_spec.rb)
 end
