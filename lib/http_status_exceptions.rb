@@ -1,4 +1,7 @@
 require 'rack/utils'
+require 'active_support/core_ext/class/attribute_accessors'
+require 'active_support/inflector'
+require 'action_pack'
 require 'action_controller'
 
 # The HTTPStatus module is the core of the http_status_exceptions gem and
@@ -8,16 +11,6 @@ require 'action_controller'
 # superclass for every HTTPStatus exception. Subclasses, like
 # <tt>HTTPStatus::Forbidden</tt> or <tt>HTTPStatus::NotFound</tt> will be
 # generated on demand by the <tt>HTTPStatus.const_missing</tt> method.
-#
-# Moreover, it contains methods to handle these exceptions and integrate this
-# functionality into <tt>ActionController::Base</tt>. When this module is in
-# included in the <tt>ActionController::Base</tt> class, it will call
-# <tt>rescue_from</tt> on it to handle all <tt>HTTPStatus::Base</tt>
-# exceptions with the <tt>HTTPStatus#http_status_exceptions</tt> method.
-#
-# The exception handler will try to render a response with the correct
-# HTTPStatus. When no suitable template is found to render the exception with,
-# it will simply respond with an empty HTTP status code.
 module HTTPStatus
 
   # The current gem release version. Do not set this value by hand, it will
@@ -26,21 +19,12 @@ module HTTPStatus
 
   # The Base HTTP status exception class is used as superclass for every
   # exception class that is constructed. It implements some shared
-  # functionality for finding the status code and determining the template
-  # path to render.
+  # functionality for finding the status code.
   #
   # Subclasses of this class will be generated on demand when a non-exisiting
   # constant of the <tt>HTTPStatus</tt> module is requested. This is
   # implemented in the <tt>HTTPStatus.const_missing</tt> method.
   class Base < StandardError
-
-    # The path from which the error documents are loaded.
-    cattr_accessor :template_path
-    @@template_path = 'shared/http_status'
-
-    # The layout in which the error documents are rendered
-    cattr_accessor :template_layout
-    @@template_layout = nil # Use the standard layout template setting by default.
 
     attr_reader :details
 
@@ -71,7 +55,7 @@ module HTTPStatus
     end
 
     # The numeric status code corresponding to this exception class. Uses the
-    # status symbol to code map in <tt>ActionController::StatusCodes</tt>.
+    # status symbol to code map in <tt>Rack::Utils::SYMBOL_TO_STATUS_CODE</tt>.
     def self.status_code
       Rack::Utils::SYMBOL_TO_STATUS_CODE[self.status]
     end
@@ -81,27 +65,6 @@ module HTTPStatus
     def status_code
       self.class.status_code
     end
-
-    # The name of the template that should be used as error page for this
-    # exception class.
-    def self.template
-      "#{template_path}/#{status}"
-    end
-
-    # The name of the template that should be used as error page for this
-    # exception. By default, it calls the class method of the same name.
-    def template
-      self.class.template
-    end
-  end
-
-  # This function will install a rescue_from handler for HTTPStatus::Base
-  # exceptions in the class in which this module is included.
-  #
-  # <tt>base</tt>:: The class in which the module is included. Should be
-  # <tt>ActionController::Base</tt> during the initialization of the gem.
-  def self.included(base)
-    base.send(:rescue_from, HTTPStatus::Base, :with => :http_status_exception)
   end
 
   # Generates a <tt>HTTPStatus::Base</tt> subclass on demand based on the
@@ -123,27 +86,21 @@ module HTTPStatus
     klass.cattr_accessor(:status)
     klass.status = status_symbol
     const_set(const, klass)
+
+    # Inject the newly created exception into ActionController's look up table
+    if defined?(ActionPack)
+      if ActionPack::VERSION::MAJOR == 2
+        ActionController::Base.rescue_responses.update("HTTPStatus::#{const}" => status_symbol) if defined?(ActionController)
+      elsif ActionPack::VERSION::MAJOR == 3
+        ActionDispatch::ShowExceptions.rescue_responses.update("HTTPStatus::#{const}" => status_symbol) if defined?(ActionDispatch)
+      end
+    end
+
     return const_get(const)
   end
 
-  # The default handler for raised HTTP status exceptions. It will render a
-  # template if available, or respond with an empty response with the HTTP
-  # status corresponding to the exception.
-  #
-  # You can override this method in your <tt>ApplicationController</tt> to
-  # handle the exceptions yourself.
-  #
-  # <tt>exception</tt>:: The HTTP status exception to handle.
-  def http_status_exception(exception)
-    @exception = exception
-    render_options = {:template => exception.template, :status => exception.status}
-    render_options[:layout] = exception.template_layout if exception.template_layout
-    render(render_options)
-  rescue ActionView::MissingTemplate
-    head(exception.status)
-  end
 end
 
 # Include the HTTPStatus module into <tt>ActionController::Base</tt> to enable
 # the <tt>http_status_exception</tt> exception handler.
-ActionController::Base.send(:include, HTTPStatus)
+ActionController::Base.send(:include, HTTPStatus) if defined?(ActionController)

@@ -1,3 +1,7 @@
+require 'rubygems'
+require 'bundler/setup'
+require 'appraisal'
+
 Dir[File.dirname(__FILE__) + "/tasks/*.rake"].each { |file| load(file) }
 
 GithubGem::RakeTasks.new(:gem)
