@@ -46,8 +46,10 @@ end
     end
 
     it "should update ActionPack's rescue responses look up table with the new HTTPStatus class" do
-      rescue_responses = if defined?(ActionDispatch)
-        ActionDispatch::ShowExceptions.rescue_responses
+      rescue_responses = if ActionPack::VERSION::MAJOR == 3
+        HTTPStatus::Railtie.config.action_dispatch.rescue_responses
+      # rescue_responses = if defined?(ActionDispatch)
+      #   ActionDispatch::ShowExceptions.rescue_responses
       else
         ActionController::Base.rescue_responses
       end

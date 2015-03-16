@@ -1,8 +1,13 @@
 require 'rack/utils'
+require 'rails'
 require 'active_support/core_ext/class/attribute_accessors'
 require 'active_support/inflector'
 require 'action_pack'
 require 'action_controller'
+
+# Railtie is only available Rails 3 and up
+# make sure loading the gem doesn't fail if not on Rails 3 and up.
+require_relative './railtie' if defined? ::Rails::Railtie
 
 # The HTTPStatus module is the core of the http_status_exceptions gem and
 # contains all functionality.
@@ -92,9 +97,12 @@ module HTTPStatus
       if ActionPack::VERSION::MAJOR == 2
         ActionController::Base.rescue_responses.update("HTTPStatus::#{const}" => status_symbol) if defined?(ActionController)
       elsif ActionPack::VERSION::MAJOR == 3
-        ActionDispatch::ShowExceptions.rescue_responses.update("HTTPStatus::#{const}" => status_symbol) if defined?(ActionDispatch)
+        HTTPStatus::Railtie.config.action_dispatch.rescue_responses.update("HTTPStatus::#{const}" => status_symbol)
+        # ActionDispatch::ShowExceptions.rescue_responses.update("HTTPStatus::#{const}" => status_symbol) if defined?(ActionDispatch)
       end
     end
+    
+    # binding.pry
 
     return const_get(const)
   end
